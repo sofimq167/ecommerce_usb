@@ -33,7 +33,7 @@ public class CartItem {
 
     @ManyToOne(optional = false)
     @JoinColumn(
-            name = "cart_id",
+            name = "product_id",
             nullable = false,
             foreignKey = @ForeignKey(name = "fk_cart_items_product"),
             referencedColumnName = "id"
