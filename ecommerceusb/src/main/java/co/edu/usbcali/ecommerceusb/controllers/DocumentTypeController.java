@@ -1,9 +1,7 @@
 package co.edu.usbcali.ecommerceusb.controllers;
 
 import co.edu.usbcali.ecommerceusb.dto.DocumentTypeResponse;
-import co.edu.usbcali.ecommerceusb.mapper.DocumentTypeMapper;
-import co.edu.usbcali.ecommerceusb.model.DocumentType;
-import co.edu.usbcali.ecommerceusb.repository.DocumentTypeRepository;
+import co.edu.usbcali.ecommerceusb.service.DocumentTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,26 +15,19 @@ import java.util.List;
 @RestController
 @RequestMapping("/document-type")
 public class DocumentTypeController {
+
     @Autowired
-    private DocumentTypeRepository documentTypeRepository;
+    private DocumentTypeService documentTypeService;
 
     @GetMapping("/all")
-    public List<DocumentType> getAll(){
-        return documentTypeRepository.findAll();
+    public ResponseEntity<List<DocumentTypeResponse>> getAll() {
+        List<DocumentTypeResponse> documentTypes = documentTypeService.getDocumentTypes();
+        return new ResponseEntity<>(documentTypes, HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DocumentTypeResponse> getById(@PathVariable Integer id){
-        //Consultar el Document Type en la base de datos
-        DocumentType documentType = documentTypeRepository.getReferenceById(id);
-        //Mapear o convertir al DTO (Response) DocumentTypeResponse
-        //Invocando el Mapper
-        DocumentTypeResponse documentTypeResponse =
-                DocumentTypeMapper.modelToDocumentTypeResponse(documentType);
-        //Retornar el ResponseEntity con el documentTypeResponse
-        return new ResponseEntity<>(
-                documentTypeResponse,
-                HttpStatus.OK
-        );
+    public ResponseEntity<DocumentTypeResponse> getById(@PathVariable Integer id) throws Exception {
+        DocumentTypeResponse documentTypeResponse = documentTypeService.getDocumentTypeById(id);
+        return new ResponseEntity<>(documentTypeResponse, HttpStatus.OK);
     }
 }
