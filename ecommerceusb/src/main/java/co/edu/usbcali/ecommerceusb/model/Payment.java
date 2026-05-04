@@ -31,6 +31,7 @@ public class Payment {
     )
     private Order order;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentStatus status;
 

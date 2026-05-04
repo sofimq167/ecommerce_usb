@@ -27,6 +27,7 @@ public class Order {
     )
     private User user;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderStatus status;
 
