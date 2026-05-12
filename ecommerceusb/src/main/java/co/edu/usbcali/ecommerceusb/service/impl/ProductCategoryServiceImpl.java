@@ -2,6 +2,7 @@ package co.edu.usbcali.ecommerceusb.service.impl;
 
 import co.edu.usbcali.ecommerceusb.dto.CreateProductCategoryRequest;
 import co.edu.usbcali.ecommerceusb.dto.ProductCategoryResponse;
+import co.edu.usbcali.ecommerceusb.dto.UpdateProductCategoryRequest;
 import co.edu.usbcali.ecommerceusb.mapper.ProductCategoryMapper;
 import co.edu.usbcali.ecommerceusb.model.Category;
 import co.edu.usbcali.ecommerceusb.model.Product;
@@ -80,6 +81,57 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
         ProductCategory productCategory = ProductCategoryMapper
                 .createProductCategoryRequestToProductCategory(
                         createProductCategoryRequest, product, category);
+        productCategory = productCategoryRepository.save(productCategory);
+        return ProductCategoryMapper.modelToProductCategoryResponse(productCategory);
+    }
+
+    @Override
+    public ProductCategoryResponse updateProductCategory(Integer id, UpdateProductCategoryRequest updateProductCategoryRequest) throws Exception {
+        // Validar id
+        if (id == null || id <= 0) {
+            throw new Exception("Debe ingresar el id para actualizar");
+        }
+
+        // Validar que el productCategory existe
+        ProductCategory productCategory = productCategoryRepository.findById(id)
+                .orElseThrow(() ->
+                        new Exception(
+                                String.format("ProductCategory no encontrado con el id: %d", id)));
+
+        // Validar campos del request
+        if (Objects.isNull(updateProductCategoryRequest)) {
+            throw new Exception("El objeto createProductCategoryRequest no puede ser nulo.");
+        }
+        if (updateProductCategoryRequest.getProductId() == null ||
+                updateProductCategoryRequest.getProductId() <= 0) {
+            throw new Exception("El campo productId debe contener un valor mayor a 0.");
+        }
+        if (updateProductCategoryRequest.getCategoryId() == null ||
+                updateProductCategoryRequest.getCategoryId() <= 0) {
+            throw new Exception("El campo categoryId debe contener un valor mayor a 0.");
+        }
+
+        // Validar que el producto existe
+        Product product = productRepository.findById(updateProductCategoryRequest.getProductId())
+                .orElseThrow(() -> new Exception("El producto no existe."));
+
+        // Validar que la categoría existe
+        Category category = categoryRepository.findById(updateProductCategoryRequest.getCategoryId())
+                .orElseThrow(() -> new Exception("La categoría no existe."));
+
+        // Validar que la combinación no exista en otro productCategory diferente al que estamos actualizando
+        if (productCategoryRepository.existsByProductIdAndCategoryId(
+                updateProductCategoryRequest.getProductId(),
+                updateProductCategoryRequest.getCategoryId()) &&
+                (!productCategory.getProduct().getId().equals(updateProductCategoryRequest.getProductId()) ||
+                        !productCategory.getCategory().getId().equals(updateProductCategoryRequest.getCategoryId()))) {
+            throw new Exception("Ya existe esa combinación de producto y categoría.");
+        }
+
+        // Actualizar campos
+        productCategory.setProduct(product);
+        productCategory.setCategory(category);
+
         productCategory = productCategoryRepository.save(productCategory);
         return ProductCategoryMapper.modelToProductCategoryResponse(productCategory);
     }

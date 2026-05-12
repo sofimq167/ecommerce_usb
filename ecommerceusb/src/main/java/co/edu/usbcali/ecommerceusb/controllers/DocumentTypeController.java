@@ -2,6 +2,7 @@ package co.edu.usbcali.ecommerceusb.controllers;
 
 import co.edu.usbcali.ecommerceusb.dto.CreateDocumentTypeRequest;
 import co.edu.usbcali.ecommerceusb.dto.DocumentTypeResponse;
+import co.edu.usbcali.ecommerceusb.dto.UpdateDocumentTypeRequest;
 import co.edu.usbcali.ecommerceusb.service.DocumentTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -33,5 +34,12 @@ public class DocumentTypeController {
     public ResponseEntity<DocumentTypeResponse> createDocumentType(
             @RequestBody CreateDocumentTypeRequest request) throws Exception {
         return new ResponseEntity<>(documentTypeService.createDocumentType(request), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<DocumentTypeResponse> updateDocumentType(
+            @PathVariable Integer id,
+            @RequestBody UpdateDocumentTypeRequest request) throws Exception {
+        return new ResponseEntity<>(documentTypeService.updateDocumentType(id, request), HttpStatus.OK);
     }
 }

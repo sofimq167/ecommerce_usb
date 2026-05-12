@@ -2,6 +2,7 @@ package co.edu.usbcali.ecommerceusb.service.impl;
 
 import co.edu.usbcali.ecommerceusb.dto.CreateOrderRequest;
 import co.edu.usbcali.ecommerceusb.dto.OrderResponse;
+import co.edu.usbcali.ecommerceusb.dto.UpdateOrderRequest;
 import co.edu.usbcali.ecommerceusb.mapper.OrderMapper;
 import co.edu.usbcali.ecommerceusb.model.Order;
 import co.edu.usbcali.ecommerceusb.model.OrderStatus;
@@ -74,6 +75,59 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new Exception("El usuario no existe."));
 
         Order order = OrderMapper.createOrderRequestToOrder(createOrderRequest, user);
+        order = orderRepository.save(order);
+        return OrderMapper.modelToOrderResponse(order);
+    }
+
+    @Override
+    public OrderResponse updateOrder(Integer id, UpdateOrderRequest updateOrderRequest) throws Exception {
+        // Validar id
+        if (id == null || id <= 0) {
+            throw new Exception("Debe ingresar el id para actualizar");
+        }
+
+        // Validar que la orden existe
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() ->
+                        new Exception(
+                                String.format("Orden no encontrada con el id: %d", id)));
+
+        // Validar campos del request
+        if (Objects.isNull(updateOrderRequest)) {
+            throw new Exception("El objeto createOrderRequest no puede ser nulo.");
+        }
+        if (updateOrderRequest.getUserId() == null || updateOrderRequest.getUserId() <= 0) {
+            throw new Exception("El campo userId debe contener un valor mayor a 0.");
+        }
+        if (Objects.isNull(updateOrderRequest.getStatus()) ||
+                updateOrderRequest.getStatus().isBlank()) {
+            throw new Exception("El campo status no puede ser nulo ni vacío.");
+        }
+        if (Objects.isNull(updateOrderRequest.getTotalAmount())) {
+            throw new Exception("El campo totalAmount no puede ser nulo.");
+        }
+        if (Objects.isNull(updateOrderRequest.getCurrency()) ||
+                updateOrderRequest.getCurrency().isBlank()) {
+            throw new Exception("El campo currency no puede ser nulo ni vacío.");
+        }
+
+        // Validar que el status sea un valor válido del enum
+        try {
+            OrderStatus.valueOf(updateOrderRequest.getStatus());
+        } catch (IllegalArgumentException e) {
+            throw new Exception("El campo status contiene un valor no válido.");
+        }
+
+        // Validar que el usuario existe
+        User user = userRepository.findById(updateOrderRequest.getUserId())
+                .orElseThrow(() -> new Exception("El usuario no existe."));
+
+        // Actualizar campos
+        order.setUser(user);
+        order.setStatus(OrderStatus.valueOf(updateOrderRequest.getStatus()));
+        order.setTotalAmount(updateOrderRequest.getTotalAmount());
+        order.setCurrency(updateOrderRequest.getCurrency());
+
         order = orderRepository.save(order);
         return OrderMapper.modelToOrderResponse(order);
     }

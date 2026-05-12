@@ -2,6 +2,7 @@ package co.edu.usbcali.ecommerceusb.service.impl;
 
 import co.edu.usbcali.ecommerceusb.dto.CategoryResponse;
 import co.edu.usbcali.ecommerceusb.dto.CreateCategoryRequest;
+import co.edu.usbcali.ecommerceusb.dto.UpdateCategoryRequest;
 import co.edu.usbcali.ecommerceusb.mapper.CategoryMapper;
 import co.edu.usbcali.ecommerceusb.model.Category;
 import co.edu.usbcali.ecommerceusb.model.Product;
@@ -60,6 +61,44 @@ public class CategoryServiceImpl implements CategoryService {
                 .orElseThrow(() -> new Exception("El producto no existe."));
 
         Category category = CategoryMapper.createCategoryRequestToCategory(createCategoryRequest, product);
+        category = categoryRepository.save(category);
+        return CategoryMapper.modelToCategoryResponse(category);
+    }
+
+    @Override
+    public CategoryResponse updateCategory(Integer id, UpdateCategoryRequest updateCategoryRequest) throws Exception {
+        // Validar id
+        if (id == null || id <= 0) {
+            throw new Exception("Debe ingresar el id para actualizar");
+        }
+
+        // Validar que la categoría existe
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() ->
+                        new Exception(
+                                String.format("Categoría no encontrada con el id: %d", id)));
+
+        // Validar campos del request
+        if (Objects.isNull(updateCategoryRequest)) {
+            throw new Exception("El objeto createCategoryRequest no puede ser nulo.");
+        }
+        if (Objects.isNull(updateCategoryRequest.getName()) ||
+                updateCategoryRequest.getName().isBlank()) {
+            throw new Exception("El campo name no puede ser nulo ni vacío.");
+        }
+        if (updateCategoryRequest.getProductId() == null ||
+                updateCategoryRequest.getProductId() <= 0) {
+            throw new Exception("El campo productId debe contener un valor mayor a 0.");
+        }
+
+        // Validar que el producto existe
+        Product product = productRepository.findById(updateCategoryRequest.getProductId())
+                .orElseThrow(() -> new Exception("El producto no existe."));
+
+        // Actualizar campos
+        category.setName(updateCategoryRequest.getName());
+        category.setProduct(product);
+
         category = categoryRepository.save(category);
         return CategoryMapper.modelToCategoryResponse(category);
     }

@@ -2,6 +2,7 @@ package co.edu.usbcali.ecommerceusb.service.impl;
 
 import co.edu.usbcali.ecommerceusb.dto.CreatePaymentRequest;
 import co.edu.usbcali.ecommerceusb.dto.PaymentResponse;
+import co.edu.usbcali.ecommerceusb.dto.UpdatePaymentRequest;
 import co.edu.usbcali.ecommerceusb.mapper.PaymentMapper;
 import co.edu.usbcali.ecommerceusb.model.Order;
 import co.edu.usbcali.ecommerceusb.model.Payment;
@@ -78,6 +79,63 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         Payment payment = PaymentMapper.createPaymentRequestToPayment(createPaymentRequest, order);
+        payment = paymentRepository.save(payment);
+        return PaymentMapper.modelToPaymentResponse(payment);
+    }
+
+    @Override
+    public PaymentResponse updatePayment(Integer id, UpdatePaymentRequest updatePaymentRequest) throws Exception {
+        // Validar id
+        if (id == null || id <= 0) {
+            throw new Exception("Debe ingresar el id para actualizar");
+        }
+
+        // Validar que el pago existe
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() ->
+                        new Exception(
+                                String.format("Pago no encontrado con el id: %d", id)));
+
+        // Validar campos del request
+        if (Objects.isNull(updatePaymentRequest)) {
+            throw new Exception("El objeto createPaymentRequest no puede ser nulo.");
+        }
+        if (updatePaymentRequest.getOrderId() == null ||
+                updatePaymentRequest.getOrderId() <= 0) {
+            throw new Exception("El campo orderId debe contener un valor mayor a 0.");
+        }
+        if (Objects.isNull(updatePaymentRequest.getStatus()) ||
+                updatePaymentRequest.getStatus().isBlank()) {
+            throw new Exception("El campo status no puede ser nulo ni vacío.");
+        }
+        if (Objects.isNull(updatePaymentRequest.getIdempotencyKey()) ||
+                updatePaymentRequest.getIdempotencyKey().isBlank()) {
+            throw new Exception("El campo idempotencyKey no puede ser nulo ni vacío.");
+        }
+
+        // Validar que el status sea un valor válido del enum
+        try {
+            PaymentStatus.valueOf(updatePaymentRequest.getStatus());
+        } catch (IllegalArgumentException e) {
+            throw new Exception("El campo status contiene un valor no válido.");
+        }
+
+        // Validar que la orden existe
+        Order order = orderRepository.findById(updatePaymentRequest.getOrderId())
+                .orElseThrow(() -> new Exception("La orden no existe."));
+
+        // Validar que el idempotencyKey no lo tenga otro pago diferente al que estamos actualizando
+        if (paymentRepository.existsByIdempotencyKey(updatePaymentRequest.getIdempotencyKey()) &&
+                !payment.getIdempotencyKey().equals(updatePaymentRequest.getIdempotencyKey())) {
+            throw new Exception("Ya existe un pago con el idempotencyKey ingresado.");
+        }
+
+        // Actualizar campos
+        payment.setOrder(order);
+        payment.setStatus(PaymentStatus.valueOf(updatePaymentRequest.getStatus()));
+        payment.setProviderRef(updatePaymentRequest.getProviderRef());
+        payment.setIdempotencyKey(updatePaymentRequest.getIdempotencyKey());
+
         payment = paymentRepository.save(payment);
         return PaymentMapper.modelToPaymentResponse(payment);
     }
