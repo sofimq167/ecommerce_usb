@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Integer> {
     Boolean existsByIdempotencyKey(String idempotencyKey);
+    Boolean existsByOrderId(Integer orderId);
 }

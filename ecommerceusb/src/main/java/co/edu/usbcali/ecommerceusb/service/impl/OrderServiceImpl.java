@@ -1,14 +1,14 @@
 package co.edu.usbcali.ecommerceusb.service.impl;
 
 import co.edu.usbcali.ecommerceusb.dto.CreateOrderRequest;
+import co.edu.usbcali.ecommerceusb.dto.DeleteOrderResponse;
 import co.edu.usbcali.ecommerceusb.dto.OrderResponse;
 import co.edu.usbcali.ecommerceusb.dto.UpdateOrderRequest;
 import co.edu.usbcali.ecommerceusb.mapper.OrderMapper;
 import co.edu.usbcali.ecommerceusb.model.Order;
 import co.edu.usbcali.ecommerceusb.model.OrderStatus;
 import co.edu.usbcali.ecommerceusb.model.User;
-import co.edu.usbcali.ecommerceusb.repository.OrderRepository;
-import co.edu.usbcali.ecommerceusb.repository.UserRepository;
+import co.edu.usbcali.ecommerceusb.repository.*;
 import co.edu.usbcali.ecommerceusb.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -24,6 +24,15 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private OrderItemRepository orderItemRepository;
+
+    @Autowired
+    private PaymentRepository paymentRepository;
+
+    @Autowired
+    private InventoryMovementRepository inventoryMovementRepository;
 
     @Override
     public List<OrderResponse> getOrders() {
@@ -130,5 +139,38 @@ public class OrderServiceImpl implements OrderService {
 
         order = orderRepository.save(order);
         return OrderMapper.modelToOrderResponse(order);
+    }
+
+    @Override
+    public DeleteOrderResponse deleteOrder(Integer id) throws Exception {
+        if (id == null || id <= 0) {
+            throw new Exception("Debe ingresar el id para eliminar");
+        }
+
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() ->
+                        new Exception(
+                                String.format("Orden no encontrada con el id: %d", id)));
+
+        // Validar que la orden no tenga orderItems asociados
+        if (orderItemRepository.existsByOrderId(id)) {
+            throw new Exception("No se puede eliminar la orden porque tiene items asociados.");
+        }
+
+        // Validar que la orden no tenga pagos asociados
+        if (paymentRepository.existsByOrderId(id)) {
+            throw new Exception("No se puede eliminar la orden porque tiene pagos asociados.");
+        }
+
+        // Validar que la orden no tenga movimientos de inventario asociados
+        if (inventoryMovementRepository.existsByOrderId(id)) {
+            throw new Exception("No se puede eliminar la orden porque tiene movimientos de inventario asociados.");
+        }
+
+        orderRepository.delete(order);
+
+        return DeleteOrderResponse.builder()
+                .message(String.format("Orden con id %d eliminada correctamente", id))
+                .build();
     }
 }

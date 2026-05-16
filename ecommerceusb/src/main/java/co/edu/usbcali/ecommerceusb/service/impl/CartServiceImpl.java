@@ -2,10 +2,12 @@ package co.edu.usbcali.ecommerceusb.service.impl;
 
 import co.edu.usbcali.ecommerceusb.dto.CartResponse;
 import co.edu.usbcali.ecommerceusb.dto.CreateCartRequest;
+import co.edu.usbcali.ecommerceusb.dto.DeleteCartResponse;
 import co.edu.usbcali.ecommerceusb.dto.UpdateCartRequest;
 import co.edu.usbcali.ecommerceusb.mapper.CartMapper;
 import co.edu.usbcali.ecommerceusb.model.Cart;
 import co.edu.usbcali.ecommerceusb.model.User;
+import co.edu.usbcali.ecommerceusb.repository.CartItemRepository;
 import co.edu.usbcali.ecommerceusb.repository.CartRepository;
 import co.edu.usbcali.ecommerceusb.repository.UserRepository;
 import co.edu.usbcali.ecommerceusb.service.CartService;
@@ -24,6 +26,9 @@ public class CartServiceImpl implements CartService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private CartItemRepository cartItemRepository;
 
     @Override
     public List<CartResponse> getCarts() {
@@ -102,5 +107,28 @@ public class CartServiceImpl implements CartService {
 
         cart = cartRepository.save(cart);
         return CartMapper.modelToCartResponse(cart);
+    }
+
+    @Override
+    public DeleteCartResponse deleteCart(Integer id) throws Exception {
+        if (id == null || id <= 0) {
+            throw new Exception("Debe ingresar el id para eliminar");
+        }
+
+        Cart cart = cartRepository.findById(id)
+                .orElseThrow(() ->
+                        new Exception(
+                                String.format("Carrito no encontrado con el id: %d", id)));
+
+        // Validar que el carrito no tenga cartItems asociados
+        if (cartItemRepository.existsByCartId(id)) {
+            throw new Exception("No se puede eliminar el carrito porque tiene items asociados.");
+        }
+
+        cartRepository.delete(cart);
+
+        return DeleteCartResponse.builder()
+                .message(String.format("Carrito con id %d eliminado correctamente", id))
+                .build();
     }
 }

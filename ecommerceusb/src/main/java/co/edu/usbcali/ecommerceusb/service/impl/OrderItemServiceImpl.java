@@ -1,6 +1,7 @@
 package co.edu.usbcali.ecommerceusb.service.impl;
 
 import co.edu.usbcali.ecommerceusb.dto.CreateOrderItemRequest;
+import co.edu.usbcali.ecommerceusb.dto.DeleteOrderItemResponse;
 import co.edu.usbcali.ecommerceusb.dto.OrderItemResponse;
 import co.edu.usbcali.ecommerceusb.dto.UpdateOrderItemRequest;
 import co.edu.usbcali.ecommerceusb.mapper.OrderItemMapper;
@@ -151,5 +152,23 @@ public class OrderItemServiceImpl implements OrderItemService {
 
         orderItem = orderItemRepository.save(orderItem);
         return OrderItemMapper.modelToOrderItemResponse(orderItem);
+    }
+
+    @Override
+    public DeleteOrderItemResponse deleteOrderItem(Integer id) throws Exception {
+        if (id == null || id <= 0) {
+            throw new Exception("Debe ingresar el id para eliminar");
+        }
+
+        OrderItem orderItem = orderItemRepository.findById(id)
+                .orElseThrow(() ->
+                        new Exception(
+                                String.format("OrderItem no encontrado con el id: %d", id)));
+
+        orderItemRepository.delete(orderItem);
+
+        return DeleteOrderItemResponse.builder()
+                .message(String.format("OrderItem con id %d eliminado correctamente", id))
+                .build();
     }
 }

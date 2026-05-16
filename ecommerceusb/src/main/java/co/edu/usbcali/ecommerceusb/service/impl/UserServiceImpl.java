@@ -1,6 +1,7 @@
 package co.edu.usbcali.ecommerceusb.service.impl;
 
 import co.edu.usbcali.ecommerceusb.dto.CreateUserRequest;
+import co.edu.usbcali.ecommerceusb.dto.DeleteUserResponse;
 import co.edu.usbcali.ecommerceusb.dto.UpdateUserRequest;
 import co.edu.usbcali.ecommerceusb.dto.UserResponse;
 import co.edu.usbcali.ecommerceusb.mapper.UserMapper;
@@ -8,10 +9,11 @@ import co.edu.usbcali.ecommerceusb.model.DocumentType;
 import co.edu.usbcali.ecommerceusb.model.User;
 import co.edu.usbcali.ecommerceusb.repository.DocumentTypeRepository;
 import co.edu.usbcali.ecommerceusb.repository.UserRepository;
+import co.edu.usbcali.ecommerceusb.repository.CartRepository;
+import co.edu.usbcali.ecommerceusb.repository.OrderRepository;
 import co.edu.usbcali.ecommerceusb.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -28,6 +30,12 @@ public class UserServiceImpl implements UserService {
     //Inyeccion de dependencias de documentTypeRepository
     @Autowired
     private DocumentTypeRepository documentTypeRepository;
+
+    @Autowired
+    private CartRepository cartRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
 
     @Override
     public List<UserResponse> getUsers() {
@@ -232,5 +240,33 @@ public class UserServiceImpl implements UserService {
 
         user = userRepository.save(user);
         return UserMapper.modelToUserResponse(user);
+    }
+
+    @Override
+    public DeleteUserResponse deleteUser(Integer id) throws Exception {
+        if (id == null || id <= 0) {
+            throw new Exception("Debe ingresar el id para eliminar");
+        }
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new Exception(
+                                String.format("Usuario no encontrado con el id: %d", id)));
+
+        // Validar que el usuario no tenga órdenes asociadas
+        if (orderRepository.existsByUserId(id)) {
+            throw new Exception("No se puede eliminar el usuario porque tiene órdenes asociadas.");
+        }
+
+        // Validar que el usuario no tenga carritos asociados
+        if (cartRepository.existsByUserId(id)) {
+            throw new Exception("No se puede eliminar el usuario porque tiene carritos asociados.");
+        }
+
+        userRepository.delete(user);
+
+        return DeleteUserResponse.builder()
+                .message(String.format("Usuario con id %d eliminado correctamente", id))
+                .build();
     }
 }

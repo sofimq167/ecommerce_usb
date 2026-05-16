@@ -1,11 +1,12 @@
 package co.edu.usbcali.ecommerceusb.service.impl;
 
 import co.edu.usbcali.ecommerceusb.dto.CreateProductRequest;
+import co.edu.usbcali.ecommerceusb.dto.DeleteProductResponse;
 import co.edu.usbcali.ecommerceusb.dto.ProductResponse;
 import co.edu.usbcali.ecommerceusb.dto.UpdateProductRequest;
 import co.edu.usbcali.ecommerceusb.mapper.ProductMapper;
 import co.edu.usbcali.ecommerceusb.model.Product;
-import co.edu.usbcali.ecommerceusb.repository.ProductRepository;
+import co.edu.usbcali.ecommerceusb.repository.*;
 import co.edu.usbcali.ecommerceusb.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,21 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private CartItemRepository cartItemRepository;
+
+    @Autowired
+    private InventoryRepository inventoryRepository;
+
+    @Autowired
+    private ProductCategoryRepository productCategoryRepository;
+
+    @Autowired
+    private InventoryMovementRepository inventoryMovementRepository;
+
+    @Autowired
+    private OrderItemRepository orderItemRepository;
 
     @Override
     public List<ProductResponse> getProducts() {
@@ -106,5 +122,48 @@ public class ProductServiceImpl implements ProductService {
 
         product = productRepository.save(product);
         return ProductMapper.modelToProductResponse(product);
+    }
+
+    @Override
+    public DeleteProductResponse deleteProduct(Integer id) throws Exception {
+        if (id == null || id <= 0) {
+            throw new Exception("Debe ingresar el id para eliminar");
+        }
+
+        Product product = productRepository.findById(id)
+                .orElseThrow(() ->
+                        new Exception(
+                                String.format("Producto no encontrado con el id: %d", id)));
+
+        // Validar que el producto no tenga cartItems asociados
+        if (cartItemRepository.existsByProductId(id)) {
+            throw new Exception("No se puede eliminar el producto porque tiene items de carrito asociados.");
+        }
+
+        // Validar que el producto no tenga orderItems asociados
+        if (orderItemRepository.existsByProductId(id)) {
+            throw new Exception("No se puede eliminar el producto porque tiene items de orden asociados.");
+        }
+
+        // Validar que el producto no tenga inventario asociado
+        if (inventoryRepository.existsByProductId(id)) {
+            throw new Exception("No se puede eliminar el producto porque tiene inventario asociado.");
+        }
+
+        // Validar que el producto no tenga categorías asociadas
+        if (productCategoryRepository.existsByProductId(id)) {
+            throw new Exception("No se puede eliminar el producto porque tiene categorías asociadas.");
+        }
+
+        // Validar que el producto no tenga movimientos de inventario asociados
+        if (inventoryMovementRepository.existsByProductId(id)) {
+            throw new Exception("No se puede eliminar el producto porque tiene movimientos de inventario asociados.");
+        }
+
+        productRepository.delete(product);
+
+        return DeleteProductResponse.builder()
+                .message(String.format("Producto con id %d eliminado correctamente", id))
+                .build();
     }
 }

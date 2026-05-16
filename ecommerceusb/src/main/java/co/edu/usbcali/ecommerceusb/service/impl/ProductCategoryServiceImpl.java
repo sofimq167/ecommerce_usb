@@ -1,6 +1,7 @@
 package co.edu.usbcali.ecommerceusb.service.impl;
 
 import co.edu.usbcali.ecommerceusb.dto.CreateProductCategoryRequest;
+import co.edu.usbcali.ecommerceusb.dto.DeleteProductCategoryResponse;
 import co.edu.usbcali.ecommerceusb.dto.ProductCategoryResponse;
 import co.edu.usbcali.ecommerceusb.dto.UpdateProductCategoryRequest;
 import co.edu.usbcali.ecommerceusb.mapper.ProductCategoryMapper;
@@ -134,5 +135,23 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
 
         productCategory = productCategoryRepository.save(productCategory);
         return ProductCategoryMapper.modelToProductCategoryResponse(productCategory);
+    }
+
+    @Override
+    public DeleteProductCategoryResponse deleteProductCategory(Integer id) throws Exception {
+        if (id == null || id <= 0) {
+            throw new Exception("Debe ingresar el id para eliminar");
+        }
+
+        ProductCategory productCategory = productCategoryRepository.findById(id)
+                .orElseThrow(() ->
+                        new Exception(
+                                String.format("ProductCategory no encontrado con el id: %d", id)));
+
+        productCategoryRepository.delete(productCategory);
+
+        return DeleteProductCategoryResponse.builder()
+                .message(String.format("ProductCategory con id %d eliminado correctamente", id))
+                .build();
     }
 }

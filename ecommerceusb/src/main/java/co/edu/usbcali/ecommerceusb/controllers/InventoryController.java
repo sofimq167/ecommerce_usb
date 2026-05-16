@@ -1,6 +1,7 @@
 package co.edu.usbcali.ecommerceusb.controllers;
 
 import co.edu.usbcali.ecommerceusb.dto.CreateInventoryRequest;
+import co.edu.usbcali.ecommerceusb.dto.DeleteInventoryResponse;
 import co.edu.usbcali.ecommerceusb.dto.InventoryResponse;
 import co.edu.usbcali.ecommerceusb.dto.UpdateInventoryRequest;
 import co.edu.usbcali.ecommerceusb.service.InventoryService;
@@ -39,5 +40,11 @@ public class InventoryController {
             @PathVariable Integer id,
             @RequestBody UpdateInventoryRequest updateInventoryRequest) throws Exception {
         return new ResponseEntity<>(inventoryService.updateInventory(id, updateInventoryRequest), HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<DeleteInventoryResponse> deleteInventory(
+            @PathVariable Integer id) throws Exception {
+        return new ResponseEntity<>(inventoryService.deleteInventory(id), HttpStatus.OK);
     }
 }

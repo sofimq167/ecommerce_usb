@@ -2,11 +2,13 @@ package co.edu.usbcali.ecommerceusb.service.impl;
 
 import co.edu.usbcali.ecommerceusb.dto.CategoryResponse;
 import co.edu.usbcali.ecommerceusb.dto.CreateCategoryRequest;
+import co.edu.usbcali.ecommerceusb.dto.DeleteCategoryResponse;
 import co.edu.usbcali.ecommerceusb.dto.UpdateCategoryRequest;
 import co.edu.usbcali.ecommerceusb.mapper.CategoryMapper;
 import co.edu.usbcali.ecommerceusb.model.Category;
 import co.edu.usbcali.ecommerceusb.model.Product;
 import co.edu.usbcali.ecommerceusb.repository.CategoryRepository;
+import co.edu.usbcali.ecommerceusb.repository.ProductCategoryRepository;
 import co.edu.usbcali.ecommerceusb.repository.ProductRepository;
 import co.edu.usbcali.ecommerceusb.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,10 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private ProductCategoryRepository productCategoryRepository;
+
 
     @Override
     public List<CategoryResponse> getCategories() {
@@ -101,5 +107,28 @@ public class CategoryServiceImpl implements CategoryService {
 
         category = categoryRepository.save(category);
         return CategoryMapper.modelToCategoryResponse(category);
+    }
+
+    @Override
+    public DeleteCategoryResponse deleteCategory(Integer id) throws Exception {
+        if (id == null || id <= 0) {
+            throw new Exception("Debe ingresar el id para eliminar");
+        }
+
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() ->
+                        new Exception(
+                                String.format("Categoría no encontrada con el id: %d", id)));
+
+        // Validar que la categoría no tenga productCategories asociadas
+        if (productCategoryRepository.existsByCategoryId(id)) {
+            throw new Exception("No se puede eliminar la categoría porque tiene productos asociados.");
+        }
+
+        categoryRepository.delete(category);
+
+        return DeleteCategoryResponse.builder()
+                .message(String.format("Categoría con id %d eliminada correctamente", id))
+                .build();
     }
 }

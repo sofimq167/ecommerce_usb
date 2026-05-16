@@ -5,4 +5,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface InventoryMovementRepository extends JpaRepository<InventoryMovement, Integer> {
+    Boolean existsByProductId(Integer productId);
+    Boolean existsByOrderId(Integer orderId);
 }
