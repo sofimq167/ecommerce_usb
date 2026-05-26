@@ -4,6 +4,9 @@ import co.edu.usbcali.ecommerceusb.dto.CreateOrderItemRequest;
 import co.edu.usbcali.ecommerceusb.dto.DeleteOrderItemResponse;
 import co.edu.usbcali.ecommerceusb.dto.OrderItemResponse;
 import co.edu.usbcali.ecommerceusb.dto.UpdateOrderItemRequest;
+import co.edu.usbcali.ecommerceusb.exception.BadRequestException;
+import co.edu.usbcali.ecommerceusb.exception.InternalServerErrorException;
+import co.edu.usbcali.ecommerceusb.exception.NotFoundException;
 import co.edu.usbcali.ecommerceusb.mapper.OrderItemMapper;
 import co.edu.usbcali.ecommerceusb.model.Order;
 import co.edu.usbcali.ecommerceusb.model.OrderItem;
@@ -32,56 +35,62 @@ public class OrderItemServiceImpl implements OrderItemService {
 
     @Override
     public List<OrderItemResponse> getOrderItems() {
-        List<OrderItem> orderItems = orderItemRepository.findAll();
-        if (orderItems.isEmpty()) {
-            return List.of();
+        try {
+            List<OrderItem> orderItems = orderItemRepository.findAll();
+            if (orderItems.isEmpty()) {
+                return List.of();
+            }
+            return OrderItemMapper.modelToOrderItemResponseList(orderItems);
+        } catch (Exception e) {
+            throw new InternalServerErrorException("Error al obtener los items de la orden: " + e.getMessage());
         }
-        return OrderItemMapper.modelToOrderItemResponseList(orderItems);
     }
 
     @Override
-    public OrderItemResponse getOrderItemById(Integer id) throws Exception {
+    public OrderItemResponse getOrderItemById(Integer id) {
         if (id == null || id <= 0) {
-            throw new Exception("Debe ingresar el id para buscar");
+            throw new BadRequestException("Debe ingresar el id para buscar");
         }
         OrderItem orderItem = orderItemRepository.findById(id)
                 .orElseThrow(() ->
-                        new Exception(
+                        new NotFoundException(
                                 String.format("OrderItem no encontrado con el id: %d", id)));
         return OrderItemMapper.modelToOrderItemResponse(orderItem);
     }
 
     @Override
-    public OrderItemResponse createOrderItem(CreateOrderItemRequest createOrderItemRequest) throws Exception {
+    public OrderItemResponse createOrderItem(CreateOrderItemRequest createOrderItemRequest) {
         if (Objects.isNull(createOrderItemRequest)) {
-            throw new Exception("El objeto createOrderItemRequest no puede ser nulo.");
+            throw new BadRequestException("El objeto createOrderItemRequest no puede ser nulo.");
         }
-        if (createOrderItemRequest.getOrderId() == null || createOrderItemRequest.getOrderId() <= 0) {
-            throw new Exception("El campo orderId debe contener un valor mayor a 0.");
+        if (createOrderItemRequest.getOrderId() == null ||
+                createOrderItemRequest.getOrderId() <= 0) {
+            throw new BadRequestException("El campo orderId debe contener un valor mayor a 0.");
         }
-        if (createOrderItemRequest.getProductId() == null || createOrderItemRequest.getProductId() <= 0) {
-            throw new Exception("El campo productId debe contener un valor mayor a 0.");
+        if (createOrderItemRequest.getProductId() == null ||
+                createOrderItemRequest.getProductId() <= 0) {
+            throw new BadRequestException("El campo productId debe contener un valor mayor a 0.");
         }
-        if (createOrderItemRequest.getQuantity() == null || createOrderItemRequest.getQuantity() <= 0) {
-            throw new Exception("El campo quantity debe contener un valor mayor a 0.");
+        if (createOrderItemRequest.getQuantity() == null ||
+                createOrderItemRequest.getQuantity() <= 0) {
+            throw new BadRequestException("El campo quantity debe contener un valor mayor a 0.");
         }
         if (Objects.isNull(createOrderItemRequest.getUnitPriceSnapshot())) {
-            throw new Exception("El campo unitPriceSnapshot no puede ser nulo.");
+            throw new BadRequestException("El campo unitPriceSnapshot no puede ser nulo.");
         }
         if (Objects.isNull(createOrderItemRequest.getLineTotal())) {
-            throw new Exception("El campo lineTotal no puede ser nulo.");
+            throw new BadRequestException("El campo lineTotal no puede ser nulo.");
         }
 
         Order order = orderRepository.findById(createOrderItemRequest.getOrderId())
-                .orElseThrow(() -> new Exception("La orden no existe."));
+                .orElseThrow(() -> new NotFoundException("La orden no existe."));
 
         Product product = productRepository.findById(createOrderItemRequest.getProductId())
-                .orElseThrow(() -> new Exception("El producto no existe."));
+                .orElseThrow(() -> new NotFoundException("El producto no existe."));
 
-        // Validar que no exista ya ese producto en la misma orden
         if (orderItemRepository.existsByOrderIdAndProductId(
                 createOrderItemRequest.getOrderId(), createOrderItemRequest.getProductId())) {
-            throw new Exception("Ya existe ese producto en la orden ingresada.");
+            throw new BadRequestException("Ya existe ese producto en la orden ingresada.");
         }
 
         OrderItem orderItem = OrderItemMapper.createOrderItemRequestToOrderItem(
@@ -91,59 +100,50 @@ public class OrderItemServiceImpl implements OrderItemService {
     }
 
     @Override
-    public OrderItemResponse updateOrderItem(Integer id, UpdateOrderItemRequest updateOrderItemRequest) throws Exception {
-        // Validar id
+    public OrderItemResponse updateOrderItem(Integer id, UpdateOrderItemRequest updateOrderItemRequest) {
         if (id == null || id <= 0) {
-            throw new Exception("Debe ingresar el id para actualizar");
+            throw new BadRequestException("Debe ingresar el id para actualizar");
         }
-
-        // Validar que el orderItem existe
         OrderItem orderItem = orderItemRepository.findById(id)
                 .orElseThrow(() ->
-                        new Exception(
+                        new NotFoundException(
                                 String.format("OrderItem no encontrado con el id: %d", id)));
-
-        // Validar campos del request
         if (Objects.isNull(updateOrderItemRequest)) {
-            throw new Exception("El objeto createOrderItemRequest no puede ser nulo.");
+            throw new BadRequestException("El objeto updateOrderItemRequest no puede ser nulo.");
         }
         if (updateOrderItemRequest.getOrderId() == null ||
                 updateOrderItemRequest.getOrderId() <= 0) {
-            throw new Exception("El campo orderId debe contener un valor mayor a 0.");
+            throw new BadRequestException("El campo orderId debe contener un valor mayor a 0.");
         }
         if (updateOrderItemRequest.getProductId() == null ||
                 updateOrderItemRequest.getProductId() <= 0) {
-            throw new Exception("El campo productId debe contener un valor mayor a 0.");
+            throw new BadRequestException("El campo productId debe contener un valor mayor a 0.");
         }
         if (updateOrderItemRequest.getQuantity() == null ||
                 updateOrderItemRequest.getQuantity() <= 0) {
-            throw new Exception("El campo quantity debe contener un valor mayor a 0.");
+            throw new BadRequestException("El campo quantity debe contener un valor mayor a 0.");
         }
         if (Objects.isNull(updateOrderItemRequest.getUnitPriceSnapshot())) {
-            throw new Exception("El campo unitPriceSnapshot no puede ser nulo.");
+            throw new BadRequestException("El campo unitPriceSnapshot no puede ser nulo.");
         }
         if (Objects.isNull(updateOrderItemRequest.getLineTotal())) {
-            throw new Exception("El campo lineTotal no puede ser nulo.");
+            throw new BadRequestException("El campo lineTotal no puede ser nulo.");
         }
 
-        // Validar que la orden existe
         Order order = orderRepository.findById(updateOrderItemRequest.getOrderId())
-                .orElseThrow(() -> new Exception("La orden no existe."));
+                .orElseThrow(() -> new NotFoundException("La orden no existe."));
 
-        // Validar que el producto existe
         Product product = productRepository.findById(updateOrderItemRequest.getProductId())
-                .orElseThrow(() -> new Exception("El producto no existe."));
+                .orElseThrow(() -> new NotFoundException("El producto no existe."));
 
-        // Validar que la combinación orden-producto no exista en otro orderItem diferente al que estamos actualizando
         if (orderItemRepository.existsByOrderIdAndProductId(
                 updateOrderItemRequest.getOrderId(),
                 updateOrderItemRequest.getProductId()) &&
                 (!orderItem.getOrder().getId().equals(updateOrderItemRequest.getOrderId()) ||
                         !orderItem.getProduct().getId().equals(updateOrderItemRequest.getProductId()))) {
-            throw new Exception("Ya existe ese producto en la orden ingresada.");
+            throw new BadRequestException("Ya existe ese producto en la orden ingresada.");
         }
 
-        // Actualizar campos
         orderItem.setOrder(order);
         orderItem.setProduct(product);
         orderItem.setQuantity(updateOrderItemRequest.getQuantity());
@@ -155,18 +155,16 @@ public class OrderItemServiceImpl implements OrderItemService {
     }
 
     @Override
-    public DeleteOrderItemResponse deleteOrderItem(Integer id) throws Exception {
+    public DeleteOrderItemResponse deleteOrderItem(Integer id) {
         if (id == null || id <= 0) {
-            throw new Exception("Debe ingresar el id para eliminar");
+            throw new BadRequestException("Debe ingresar el id para eliminar");
         }
-
         OrderItem orderItem = orderItemRepository.findById(id)
                 .orElseThrow(() ->
-                        new Exception(
+                        new NotFoundException(
                                 String.format("OrderItem no encontrado con el id: %d", id)));
 
         orderItemRepository.delete(orderItem);
-
         return DeleteOrderItemResponse.builder()
                 .message(String.format("OrderItem con id %d eliminado correctamente", id))
                 .build();

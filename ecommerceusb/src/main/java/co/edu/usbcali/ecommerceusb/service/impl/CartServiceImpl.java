@@ -4,6 +4,9 @@ import co.edu.usbcali.ecommerceusb.dto.CartResponse;
 import co.edu.usbcali.ecommerceusb.dto.CreateCartRequest;
 import co.edu.usbcali.ecommerceusb.dto.DeleteCartResponse;
 import co.edu.usbcali.ecommerceusb.dto.UpdateCartRequest;
+import co.edu.usbcali.ecommerceusb.exception.BadRequestException;
+import co.edu.usbcali.ecommerceusb.exception.InternalServerErrorException;
+import co.edu.usbcali.ecommerceusb.exception.NotFoundException;
 import co.edu.usbcali.ecommerceusb.mapper.CartMapper;
 import co.edu.usbcali.ecommerceusb.model.Cart;
 import co.edu.usbcali.ecommerceusb.model.User;
@@ -32,39 +35,44 @@ public class CartServiceImpl implements CartService {
 
     @Override
     public List<CartResponse> getCarts() {
-        List<Cart> carts = cartRepository.findAll();
-        if (carts.isEmpty()) {
-            return List.of();
+        try {
+            List<Cart> carts = cartRepository.findAll();
+            if (carts.isEmpty()) {
+                return List.of();
+            }
+            return CartMapper.modelToCartResponseList(carts);
+        } catch (Exception e) {
+            throw new InternalServerErrorException("Error al obtener los carritos: " + e.getMessage());
         }
-        return CartMapper.modelToCartResponseList(carts);
     }
 
     @Override
-    public CartResponse getCartById(Integer id) throws Exception {
+    public CartResponse getCartById(Integer id) {
         if (id == null || id <= 0) {
-            throw new Exception("Debe ingresar el id para buscar");
+            throw new BadRequestException("Debe ingresar el id para buscar");
         }
         Cart cart = cartRepository.findById(id)
                 .orElseThrow(() ->
-                        new Exception(
+                        new NotFoundException(
                                 String.format("Carrito no encontrado con el id: %d", id)));
         return CartMapper.modelToCartResponse(cart);
     }
 
     @Override
-    public CartResponse createCart(CreateCartRequest createCartRequest) throws Exception {
+    public CartResponse createCart(CreateCartRequest createCartRequest) {
         if (Objects.isNull(createCartRequest)) {
-            throw new Exception("El objeto createCartRequest no puede ser nulo.");
+            throw new BadRequestException("El objeto createCartRequest no puede ser nulo.");
         }
-        if (Objects.isNull(createCartRequest.getStatus()) || createCartRequest.getStatus().isBlank()) {
-            throw new Exception("El campo status no puede ser nulo ni vacío.");
+        if (Objects.isNull(createCartRequest.getStatus()) ||
+                createCartRequest.getStatus().isBlank()) {
+            throw new BadRequestException("El campo status no puede ser nulo ni vacío.");
         }
         if (createCartRequest.getUserId() == null || createCartRequest.getUserId() <= 0) {
-            throw new Exception("El campo userId debe contener un valor mayor a 0.");
+            throw new BadRequestException("El campo userId debe contener un valor mayor a 0.");
         }
 
         User user = userRepository.findById(createCartRequest.getUserId())
-                .orElseThrow(() -> new Exception("El usuario no existe."));
+                .orElseThrow(() -> new NotFoundException("El usuario no existe."));
 
         Cart cart = CartMapper.createCartRequestToCart(createCartRequest, user);
         cart = cartRepository.save(cart);
@@ -72,35 +80,28 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    public CartResponse updateCart(Integer id, UpdateCartRequest updateCartRequest) throws Exception {
-        // Validar id
+    public CartResponse updateCart(Integer id, UpdateCartRequest updateCartRequest) {
         if (id == null || id <= 0) {
-            throw new Exception("Debe ingresar el id para actualizar");
+            throw new BadRequestException("Debe ingresar el id para actualizar");
         }
-
-        // Validar que el carrito existe
         Cart cart = cartRepository.findById(id)
                 .orElseThrow(() ->
-                        new Exception(
+                        new NotFoundException(
                                 String.format("Carrito no encontrado con el id: %d", id)));
-
-        // Validar campos del request
         if (Objects.isNull(updateCartRequest)) {
-            throw new Exception("El objeto createCartRequest no puede ser nulo.");
+            throw new BadRequestException("El objeto updateCartRequest no puede ser nulo.");
         }
         if (Objects.isNull(updateCartRequest.getStatus()) ||
                 updateCartRequest.getStatus().isBlank()) {
-            throw new Exception("El campo status no puede ser nulo ni vacío.");
+            throw new BadRequestException("El campo status no puede ser nulo ni vacío.");
         }
         if (updateCartRequest.getUserId() == null || updateCartRequest.getUserId() <= 0) {
-            throw new Exception("El campo userId debe contener un valor mayor a 0.");
+            throw new BadRequestException("El campo userId debe contener un valor mayor a 0.");
         }
 
-        // Validar que el usuario existe
         User user = userRepository.findById(updateCartRequest.getUserId())
-                .orElseThrow(() -> new Exception("El usuario no existe."));
+                .orElseThrow(() -> new NotFoundException("El usuario no existe."));
 
-        // Actualizar campos
         cart.setStatus(updateCartRequest.getStatus());
         cart.setUser(user);
         cart.setUpdatedAt(OffsetDateTime.now());
@@ -110,23 +111,20 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    public DeleteCartResponse deleteCart(Integer id) throws Exception {
+    public DeleteCartResponse deleteCart(Integer id) {
         if (id == null || id <= 0) {
-            throw new Exception("Debe ingresar el id para eliminar");
+            throw new BadRequestException("Debe ingresar el id para eliminar");
         }
-
         Cart cart = cartRepository.findById(id)
                 .orElseThrow(() ->
-                        new Exception(
+                        new NotFoundException(
                                 String.format("Carrito no encontrado con el id: %d", id)));
 
-        // Validar que el carrito no tenga cartItems asociados
         if (cartItemRepository.existsByCartId(id)) {
-            throw new Exception("No se puede eliminar el carrito porque tiene items asociados.");
+            throw new BadRequestException("No se puede eliminar el carrito porque tiene items asociados.");
         }
 
         cartRepository.delete(cart);
-
         return DeleteCartResponse.builder()
                 .message(String.format("Carrito con id %d eliminado correctamente", id))
                 .build();

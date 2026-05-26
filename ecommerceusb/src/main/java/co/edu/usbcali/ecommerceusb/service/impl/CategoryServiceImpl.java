@@ -4,6 +4,9 @@ import co.edu.usbcali.ecommerceusb.dto.CategoryResponse;
 import co.edu.usbcali.ecommerceusb.dto.CreateCategoryRequest;
 import co.edu.usbcali.ecommerceusb.dto.DeleteCategoryResponse;
 import co.edu.usbcali.ecommerceusb.dto.UpdateCategoryRequest;
+import co.edu.usbcali.ecommerceusb.exception.BadRequestException;
+import co.edu.usbcali.ecommerceusb.exception.InternalServerErrorException;
+import co.edu.usbcali.ecommerceusb.exception.NotFoundException;
 import co.edu.usbcali.ecommerceusb.mapper.CategoryMapper;
 import co.edu.usbcali.ecommerceusb.model.Category;
 import co.edu.usbcali.ecommerceusb.model.Product;
@@ -14,6 +17,7 @@ import co.edu.usbcali.ecommerceusb.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -29,79 +33,78 @@ public class CategoryServiceImpl implements CategoryService {
     @Autowired
     private ProductCategoryRepository productCategoryRepository;
 
-
     @Override
     public List<CategoryResponse> getCategories() {
-        List<Category> categories = categoryRepository.findAll();
-        if (categories.isEmpty()) {
-            return List.of();
+        try {
+            List<Category> categories = categoryRepository.findAll();
+            if (categories.isEmpty()) {
+                return List.of();
+            }
+            return CategoryMapper.modelToCategoryResponseList(categories);
+        } catch (Exception e) {
+            throw new InternalServerErrorException("Error al obtener las categorías: " + e.getMessage());
         }
-        return CategoryMapper.modelToCategoryResponseList(categories);
     }
 
     @Override
-    public CategoryResponse getCategoryById(Integer id) throws Exception {
+    public CategoryResponse getCategoryById(Integer id) {
         if (id == null || id <= 0) {
-            throw new Exception("Debe ingresar el id para buscar");
+            throw new BadRequestException("Debe ingresar el id para buscar");
         }
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() ->
-                        new Exception(
+                        new NotFoundException(
                                 String.format("Categoría no encontrada con el id: %d", id)));
         return CategoryMapper.modelToCategoryResponse(category);
     }
 
     @Override
-    public CategoryResponse createCategory(CreateCategoryRequest createCategoryRequest) throws Exception {
+    public CategoryResponse createCategory(CreateCategoryRequest createCategoryRequest) {
         if (Objects.isNull(createCategoryRequest)) {
-            throw new Exception("El objeto createCategoryRequest no puede ser nulo.");
+            throw new BadRequestException("El objeto createCategoryRequest no puede ser nulo.");
         }
-        if (Objects.isNull(createCategoryRequest.getName()) || createCategoryRequest.getName().isBlank()) {
-            throw new Exception("El campo name no puede ser nulo ni vacío.");
+        if (Objects.isNull(createCategoryRequest.getName()) ||
+                createCategoryRequest.getName().isBlank()) {
+            throw new BadRequestException("El campo name no puede ser nulo ni vacío.");
         }
-        if (createCategoryRequest.getProductId() == null || createCategoryRequest.getProductId() <= 0) {
-            throw new Exception("El campo productId debe contener un valor mayor a 0.");
+        if (createCategoryRequest.getProductId() == null ||
+                createCategoryRequest.getProductId() <= 0) {
+            throw new BadRequestException("El campo productId debe contener un valor mayor a 0.");
         }
 
         Product product = productRepository.findById(createCategoryRequest.getProductId())
-                .orElseThrow(() -> new Exception("El producto no existe."));
+                .orElseThrow(() -> new NotFoundException("El producto no existe."));
 
-        Category category = CategoryMapper.createCategoryRequestToCategory(createCategoryRequest, product);
+        Category category = CategoryMapper.createCategoryRequestToCategory(
+                createCategoryRequest, product);
         category = categoryRepository.save(category);
         return CategoryMapper.modelToCategoryResponse(category);
     }
 
     @Override
-    public CategoryResponse updateCategory(Integer id, UpdateCategoryRequest updateCategoryRequest) throws Exception {
-        // Validar id
+    public CategoryResponse updateCategory(Integer id, UpdateCategoryRequest updateCategoryRequest) {
         if (id == null || id <= 0) {
-            throw new Exception("Debe ingresar el id para actualizar");
+            throw new BadRequestException("Debe ingresar el id para actualizar");
         }
-
-        // Validar que la categoría existe
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() ->
-                        new Exception(
+                        new NotFoundException(
                                 String.format("Categoría no encontrada con el id: %d", id)));
-
-        // Validar campos del request
         if (Objects.isNull(updateCategoryRequest)) {
-            throw new Exception("El objeto createCategoryRequest no puede ser nulo.");
+            throw new BadRequestException("El objeto updateCategoryRequest no puede ser nulo.");
         }
         if (Objects.isNull(updateCategoryRequest.getName()) ||
                 updateCategoryRequest.getName().isBlank()) {
-            throw new Exception("El campo name no puede ser nulo ni vacío.");
+            throw new BadRequestException("El campo name no puede ser nulo ni vacío.");
         }
         if (updateCategoryRequest.getProductId() == null ||
                 updateCategoryRequest.getProductId() <= 0) {
-            throw new Exception("El campo productId debe contener un valor mayor a 0.");
+            throw new BadRequestException("El campo productId debe contener un valor mayor a 0.");
         }
 
-        // Validar que el producto existe
         Product product = productRepository.findById(updateCategoryRequest.getProductId())
-                .orElseThrow(() -> new Exception("El producto no existe."));
+                .orElseThrow(() -> new NotFoundException("El producto no existe."));
 
-        // Actualizar campos
         category.setName(updateCategoryRequest.getName());
         category.setProduct(product);
 
@@ -110,23 +113,20 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public DeleteCategoryResponse deleteCategory(Integer id) throws Exception {
+    public DeleteCategoryResponse deleteCategory(Integer id) {
         if (id == null || id <= 0) {
-            throw new Exception("Debe ingresar el id para eliminar");
+            throw new BadRequestException("Debe ingresar el id para eliminar");
         }
-
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() ->
-                        new Exception(
+                        new NotFoundException(
                                 String.format("Categoría no encontrada con el id: %d", id)));
 
-        // Validar que la categoría no tenga productCategories asociadas
         if (productCategoryRepository.existsByCategoryId(id)) {
-            throw new Exception("No se puede eliminar la categoría porque tiene productos asociados.");
+            throw new BadRequestException("No se puede eliminar la categoría porque tiene productos asociados.");
         }
 
         categoryRepository.delete(category);
-
         return DeleteCategoryResponse.builder()
                 .message(String.format("Categoría con id %d eliminada correctamente", id))
                 .build();

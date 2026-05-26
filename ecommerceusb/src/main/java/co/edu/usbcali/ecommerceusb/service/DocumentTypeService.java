@@ -9,8 +9,8 @@ import java.util.List;
 
 public interface DocumentTypeService {
     List<DocumentTypeResponse> getDocumentTypes();
-    DocumentTypeResponse getDocumentTypeById(Integer id) throws Exception;
-    DocumentTypeResponse createDocumentType(CreateDocumentTypeRequest request) throws Exception;
-    DocumentTypeResponse updateDocumentType(Integer id, UpdateDocumentTypeRequest request) throws Exception;
-    DeleteDocumentTypeResponse deleteDocumentType(Integer id) throws Exception;
+    DocumentTypeResponse getDocumentTypeById(Integer id);
+    DocumentTypeResponse createDocumentType(CreateDocumentTypeRequest request);
+    DocumentTypeResponse updateDocumentType(Integer id, UpdateDocumentTypeRequest request);
+    DeleteDocumentTypeResponse deleteDocumentType(Integer id);
 }

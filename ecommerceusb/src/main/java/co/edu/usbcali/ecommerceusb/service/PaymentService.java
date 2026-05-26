@@ -9,8 +9,8 @@ import java.util.List;
 
 public interface PaymentService {
     List<PaymentResponse> getPayments();
-    PaymentResponse getPaymentById(Integer id) throws Exception;
-    PaymentResponse createPayment(CreatePaymentRequest createPaymentRequest) throws Exception;
-    PaymentResponse updatePayment(Integer id, UpdatePaymentRequest updatePaymentRequest) throws Exception;
-    DeletePaymentResponse deletePayment(Integer id) throws Exception;
+    PaymentResponse getPaymentById(Integer id);
+    PaymentResponse createPayment(CreatePaymentRequest createPaymentRequest);
+    PaymentResponse updatePayment(Integer id, UpdatePaymentRequest updatePaymentRequest);
+    DeletePaymentResponse deletePayment(Integer id);
 }

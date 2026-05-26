@@ -4,11 +4,18 @@ import co.edu.usbcali.ecommerceusb.dto.CreateOrderRequest;
 import co.edu.usbcali.ecommerceusb.dto.DeleteOrderResponse;
 import co.edu.usbcali.ecommerceusb.dto.OrderResponse;
 import co.edu.usbcali.ecommerceusb.dto.UpdateOrderRequest;
+import co.edu.usbcali.ecommerceusb.exception.BadRequestException;
+import co.edu.usbcali.ecommerceusb.exception.InternalServerErrorException;
+import co.edu.usbcali.ecommerceusb.exception.NotFoundException;
 import co.edu.usbcali.ecommerceusb.mapper.OrderMapper;
 import co.edu.usbcali.ecommerceusb.model.Order;
 import co.edu.usbcali.ecommerceusb.model.OrderStatus;
 import co.edu.usbcali.ecommerceusb.model.User;
-import co.edu.usbcali.ecommerceusb.repository.*;
+import co.edu.usbcali.ecommerceusb.repository.InventoryMovementRepository;
+import co.edu.usbcali.ecommerceusb.repository.OrderItemRepository;
+import co.edu.usbcali.ecommerceusb.repository.OrderRepository;
+import co.edu.usbcali.ecommerceusb.repository.PaymentRepository;
+import co.edu.usbcali.ecommerceusb.repository.UserRepository;
 import co.edu.usbcali.ecommerceusb.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -36,52 +43,56 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderResponse> getOrders() {
-        List<Order> orders = orderRepository.findAll();
-        if (orders.isEmpty()) {
-            return List.of();
+        try {
+            List<Order> orders = orderRepository.findAll();
+            if (orders.isEmpty()) {
+                return List.of();
+            }
+            return OrderMapper.modelToOrderResponseList(orders);
+        } catch (Exception e) {
+            throw new InternalServerErrorException("Error al obtener las órdenes: " + e.getMessage());
         }
-        return OrderMapper.modelToOrderResponseList(orders);
     }
 
     @Override
-    public OrderResponse getOrderById(Integer id) throws Exception {
+    public OrderResponse getOrderById(Integer id) {
         if (id == null || id <= 0) {
-            throw new Exception("Debe ingresar el id para buscar");
+            throw new BadRequestException("Debe ingresar el id para buscar");
         }
         Order order = orderRepository.findById(id)
                 .orElseThrow(() ->
-                        new Exception(
+                        new NotFoundException(
                                 String.format("Orden no encontrada con el id: %d", id)));
         return OrderMapper.modelToOrderResponse(order);
     }
 
     @Override
-    public OrderResponse createOrder(CreateOrderRequest createOrderRequest) throws Exception {
+    public OrderResponse createOrder(CreateOrderRequest createOrderRequest) {
         if (Objects.isNull(createOrderRequest)) {
-            throw new Exception("El objeto createOrderRequest no puede ser nulo.");
+            throw new BadRequestException("El objeto createOrderRequest no puede ser nulo.");
         }
         if (createOrderRequest.getUserId() == null || createOrderRequest.getUserId() <= 0) {
-            throw new Exception("El campo userId debe contener un valor mayor a 0.");
+            throw new BadRequestException("El campo userId debe contener un valor mayor a 0.");
         }
-        if (Objects.isNull(createOrderRequest.getStatus()) || createOrderRequest.getStatus().isBlank()) {
-            throw new Exception("El campo status no puede ser nulo ni vacío.");
+        if (Objects.isNull(createOrderRequest.getStatus()) ||
+                createOrderRequest.getStatus().isBlank()) {
+            throw new BadRequestException("El campo status no puede ser nulo ni vacío.");
         }
         if (Objects.isNull(createOrderRequest.getTotalAmount())) {
-            throw new Exception("El campo totalAmount no puede ser nulo.");
+            throw new BadRequestException("El campo totalAmount no puede ser nulo.");
         }
-        if (Objects.isNull(createOrderRequest.getCurrency()) || createOrderRequest.getCurrency().isBlank()) {
-            throw new Exception("El campo currency no puede ser nulo ni vacío.");
+        if (Objects.isNull(createOrderRequest.getCurrency()) ||
+                createOrderRequest.getCurrency().isBlank()) {
+            throw new BadRequestException("El campo currency no puede ser nulo ni vacío.");
         }
-
-        // Validar que el status sea un valor válido del enum
         try {
             OrderStatus.valueOf(createOrderRequest.getStatus());
         } catch (IllegalArgumentException e) {
-            throw new Exception("El campo status contiene un valor no válido.");
+            throw new BadRequestException("El campo status contiene un valor no válido.");
         }
 
         User user = userRepository.findById(createOrderRequest.getUserId())
-                .orElseThrow(() -> new Exception("El usuario no existe."));
+                .orElseThrow(() -> new NotFoundException("El usuario no existe."));
 
         Order order = OrderMapper.createOrderRequestToOrder(createOrderRequest, user);
         order = orderRepository.save(order);
@@ -89,49 +100,40 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderResponse updateOrder(Integer id, UpdateOrderRequest updateOrderRequest) throws Exception {
-        // Validar id
+    public OrderResponse updateOrder(Integer id, UpdateOrderRequest updateOrderRequest) {
         if (id == null || id <= 0) {
-            throw new Exception("Debe ingresar el id para actualizar");
+            throw new BadRequestException("Debe ingresar el id para actualizar");
         }
-
-        // Validar que la orden existe
         Order order = orderRepository.findById(id)
                 .orElseThrow(() ->
-                        new Exception(
+                        new NotFoundException(
                                 String.format("Orden no encontrada con el id: %d", id)));
-
-        // Validar campos del request
         if (Objects.isNull(updateOrderRequest)) {
-            throw new Exception("El objeto createOrderRequest no puede ser nulo.");
+            throw new BadRequestException("El objeto updateOrderRequest no puede ser nulo.");
         }
         if (updateOrderRequest.getUserId() == null || updateOrderRequest.getUserId() <= 0) {
-            throw new Exception("El campo userId debe contener un valor mayor a 0.");
+            throw new BadRequestException("El campo userId debe contener un valor mayor a 0.");
         }
         if (Objects.isNull(updateOrderRequest.getStatus()) ||
                 updateOrderRequest.getStatus().isBlank()) {
-            throw new Exception("El campo status no puede ser nulo ni vacío.");
+            throw new BadRequestException("El campo status no puede ser nulo ni vacío.");
         }
         if (Objects.isNull(updateOrderRequest.getTotalAmount())) {
-            throw new Exception("El campo totalAmount no puede ser nulo.");
+            throw new BadRequestException("El campo totalAmount no puede ser nulo.");
         }
         if (Objects.isNull(updateOrderRequest.getCurrency()) ||
                 updateOrderRequest.getCurrency().isBlank()) {
-            throw new Exception("El campo currency no puede ser nulo ni vacío.");
+            throw new BadRequestException("El campo currency no puede ser nulo ni vacío.");
         }
-
-        // Validar que el status sea un valor válido del enum
         try {
             OrderStatus.valueOf(updateOrderRequest.getStatus());
         } catch (IllegalArgumentException e) {
-            throw new Exception("El campo status contiene un valor no válido.");
+            throw new BadRequestException("El campo status contiene un valor no válido.");
         }
 
-        // Validar que el usuario existe
         User user = userRepository.findById(updateOrderRequest.getUserId())
-                .orElseThrow(() -> new Exception("El usuario no existe."));
+                .orElseThrow(() -> new NotFoundException("El usuario no existe."));
 
-        // Actualizar campos
         order.setUser(user);
         order.setStatus(OrderStatus.valueOf(updateOrderRequest.getStatus()));
         order.setTotalAmount(updateOrderRequest.getTotalAmount());
@@ -142,33 +144,26 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public DeleteOrderResponse deleteOrder(Integer id) throws Exception {
+    public DeleteOrderResponse deleteOrder(Integer id) {
         if (id == null || id <= 0) {
-            throw new Exception("Debe ingresar el id para eliminar");
+            throw new BadRequestException("Debe ingresar el id para eliminar");
         }
-
         Order order = orderRepository.findById(id)
                 .orElseThrow(() ->
-                        new Exception(
+                        new NotFoundException(
                                 String.format("Orden no encontrada con el id: %d", id)));
 
-        // Validar que la orden no tenga orderItems asociados
         if (orderItemRepository.existsByOrderId(id)) {
-            throw new Exception("No se puede eliminar la orden porque tiene items asociados.");
+            throw new BadRequestException("No se puede eliminar la orden porque tiene items asociados.");
         }
-
-        // Validar que la orden no tenga pagos asociados
         if (paymentRepository.existsByOrderId(id)) {
-            throw new Exception("No se puede eliminar la orden porque tiene pagos asociados.");
+            throw new BadRequestException("No se puede eliminar la orden porque tiene pagos asociados.");
         }
-
-        // Validar que la orden no tenga movimientos de inventario asociados
         if (inventoryMovementRepository.existsByOrderId(id)) {
-            throw new Exception("No se puede eliminar la orden porque tiene movimientos de inventario asociados.");
+            throw new BadRequestException("No se puede eliminar la orden porque tiene movimientos de inventario asociados.");
         }
 
         orderRepository.delete(order);
-
         return DeleteOrderResponse.builder()
                 .message(String.format("Orden con id %d eliminada correctamente", id))
                 .build();
