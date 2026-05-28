@@ -5,5 +5,5 @@ import lombok.Data;
 @Data
 public class UpdateCategoryRequest {
     private String name;
-    private Integer productId;
+    private Integer parentId;
 }
